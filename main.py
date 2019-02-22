@@ -6,45 +6,64 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import os
+import sys
 import requests
 
 app = Flask(__name__)
 
 #環境変数の取得
-LINE_CHANNEL_ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
-LINE_CHANNEL_SECRET = os.environ["LINE_CHANNEL_SECRET"]
-YJDN_APP_ID = os.environ["YJDN_APP_ID"]
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
+YJDN_APP_ID = os.getenv('YJDN_APP_ID', None)
+if LINE_CHANNEL_ACCESS_TOKEN is None:
+    print('Specify LINE_CHANNEL_ACCESS_TOKEN as environment variable.')
+    sys.exit(1)
+if LINE_CHANNEL_SECRET is None:
+    print('Specify LINE_CHANNEL_SECRET as environment variable.')
+    sys.exit(1)
+if YJDN_APP_ID is None:
+    print('Specify YJDN_APP_ID as environment variable.')
+    sys.exit(1)
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-@app.route("/callback",methods=["POST"])
+
+@app.route("/callback", methods=["POST"])
 def callback():
+    # get X-Line-Signature header value
     signature = request.headers["X-Line-Signature"]
 
+    # get request body as text
     body = request.get_data(as_text=True)
-    app.logger.info("Request body" + body)
+    app.logger.info("Request body: " + body)
 
+    # handle webhook body
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
+
     return "OK"
 
-@handler.add(MessageEvent,message=TextMessage)
+
+@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    #入力された文字列を格納
+    # 入力された文字列を格納
     push_text = event.message.text
     app.logger.info("Recieved message:" + push_text)
 
-    #リプライする文字列
+    # リプライする文字列
     if push_text == "天気":
         reply_text = request_yahoo_weather()
     else:
         reply_text = push_text
 
-    #リプライ部分の記述
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+    # リプライ部分の記述
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=reply_text)
+    )
 
 
 def request_yahoo_weather():
