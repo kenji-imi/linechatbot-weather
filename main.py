@@ -1,33 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from flask import Flask,request,abort
-from linebot import LineBotApi,WebhookHandler
+from flask import Flask, request, abort
+from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent,TextMessage,TextSendMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import os
 import requests
-import pprint
 
-app=Flask(__name__)
+app = Flask(__name__)
 
 #環境変数の取得
 LINE_CHANNEL_ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
 LINE_CHANNEL_SECRET = os.environ["LINE_CHANNEL_SECRET"]
 YJDN_APP_ID = os.environ["YJDN_APP_ID"]
 
-line_bot_api=LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-handler=WebhookHandler(LINE_CHANNEL_SECRET)
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 @app.route("/callback",methods=["POST"])
 def callback():
-    signature=request.headers["X-Line-Signature"]
+    signature = request.headers["X-Line-Signature"]
 
-    body=request.get_data(as_text=True)
-    app.logger.info("Request body"+body)
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body" + body)
 
     try:
-        handler.handle(body,signature)
+        handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
     return "OK"
@@ -36,6 +35,7 @@ def callback():
 def handle_message(event):
     #入力された文字列を格納
     push_text = event.message.text
+    app.logger.info("Recieved message:" + push_text)
 
     #リプライする文字列
     if push_text == "天気":
@@ -44,7 +44,7 @@ def handle_message(event):
         reply_text = push_text
 
     #リプライ部分の記述
-    line_bot_api.reply_message(event.reply_token,TextSendMessage(text=reply_text))
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
 
 def request_yahoo_weather():
@@ -101,6 +101,6 @@ def request_yahoo_weather():
     return talk_text
 
 
-if __name__=="__main__":
-    port=int(os.getenv("PORT",5000))
-    app.run(host="0.0.0.0",port=port)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
